@@ -7,7 +7,7 @@ const mongoose = require("mongoose");
 
 const app = express();
 const PORT = process.env.PORT || 10000;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "change-this-password";
+let ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "change-this-password";
 
 // MongoDB Connection
 const MONGO_URI = process.env.MONGO_URI;
@@ -57,7 +57,7 @@ const orderSchema = new mongoose.Schema({
 
 const couponSchema = new mongoose.Schema({
   code: String,
-  discountType: String, // percentage / fixed
+  discountType: String,
   discountValue: Number,
   minOrderAmount: Number,
   active: { type: Boolean, default: true }
@@ -71,7 +71,9 @@ const settingsSchema = new mongoose.Schema({
   currency: String,
   deliveryInsideDhaka: Number,
   deliveryOutsideDhaka: Number,
-  deliveryText: String
+  deliveryText: String,
+  logo: String,       // নতুন লোগো ফিল্ড
+  layout: { type: String, default: "grid-4" } // নতুন লেআউট ফিল্ড (গ্রিড கண்ட்রোল)
 });
 
 const Product = mongoose.model("Product", productSchema);
@@ -100,7 +102,9 @@ async function seedDefaults() {
         currency: "৳",
         deliveryInsideDhaka: 60,
         deliveryOutsideDhaka: 120,
-        deliveryText: "সারা বাংলাদেশে ডেলিভারি সুবিধা ও ক্যাশ অন ডেলিভারি সিস্টেম।"
+        deliveryText: "সারা বাংলাদেশে ডেলিভারি সুবিধা ও ক্যাশ অন ডেলিভারি সিস্টেম。",
+        logo: "",
+        layout: "grid-4"
       });
     }
   } catch (err) {
@@ -287,12 +291,22 @@ app.put("/api/admin/settings", auth, async (req, res) => {
       settings.deliveryInsideDhaka = req.body.deliveryInsideDhaka || settings.deliveryInsideDhaka;
       settings.deliveryOutsideDhaka = req.body.deliveryOutsideDhaka || settings.deliveryOutsideDhaka;
       settings.deliveryText = req.body.deliveryText || settings.deliveryText;
+      settings.logo = req.body.logo || settings.logo;
+      settings.layout = req.body.layout || settings.layout;
     }
     await settings.save();
     res.json(settings);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// Admin Password Change Route
+app.post("/api/admin/change-password", auth, (req, res) => {
+  const { newPassword } = req.body;
+  if (!newPassword) return res.status(400).json({ error: "New password is required" });
+  ADMIN_PASSWORD = newPassword;
+  res.json({ success: true, message: "Password updated successfully" });
 });
 
 // Static files and frontend routes

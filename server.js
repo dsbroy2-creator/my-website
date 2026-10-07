@@ -8,6 +8,9 @@ const mongoose = require("mongoose");
 const app = express();
 const PORT = process.env.PORT || 10000;
 
+// ফিক্সড অ্যাডমিন পাসওয়ার্ড (এটি কোডে সরাসরি সেট করা থাকল, কোনো ডেটাবেজ ঝামেলা নেই)
+let ADMIN_PASSWORD = "123456";
+
 // MongoDB Connection
 const MONGO_URI = process.env.MONGO_URI;
 if (MONGO_URI) {
@@ -54,7 +57,6 @@ const orderSchema = new mongoose.Schema({
   date: { type: Number, default: Date.now }
 });
 
-// পাসওয়ার্ড সহ সেটিংস স্কিমা (যাতে ডেটাবেজে পাসওয়ার্ড স্থায়ীভাবে সেভ থাকে)
 const settingsSchema = new mongoose.Schema({
   storeName: String,
   tagLine: String,
@@ -65,8 +67,7 @@ const settingsSchema = new mongoose.Schema({
   deliveryOutsideDhaka: Number,
   deliveryText: String,
   logo: String,
-  layout: { type: String, default: "grid-4" },
-  adminPassword: { type: String, default: "123456" }
+  layout: { type: String, default: "grid-4" }
 });
 
 const Product = mongoose.model("Product", productSchema);
@@ -94,10 +95,9 @@ async function seedDefaults() {
         currency: "৳",
         deliveryInsideDhaka: 60,
         deliveryOutsideDhaka: 120,
-        deliveryText: "সারা বাংলাদেশে ডেলিভারি সুবিধা ও ক্যাশ অন ডেলিভারি সিস্টেম。",
+        deliveryText: "সারা বাংলাদেশে ডেলিভারি সুবিধা ও ক্যাশ অন ডেলিভারি সিস্টেম।",
         logo: "",
-        layout: "grid-4",
-        adminPassword: "123456"
+        layout: "grid-4"
       });
     }
   } catch (err) {
@@ -119,7 +119,6 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
-// সাধারণ অথেন্টিকেশন মিডলওয়্যার (যাতে টোকেন পেলেই পাস করতে দেয়)
 function auth(req, res, next) {
   const token = req.headers["x-admin-token"] || req.headers["x-admin-value"];
   if (!token) {
@@ -128,21 +127,15 @@ function auth(req, res, next) {
   next();
 }
 
-// Public API Routes - লগইন লজিক ডেটাবেজ চেক সহ
-app.post("/api/admin/login", async (req, res) => {
-  try {
-    const { password } = req.body;
-    let settings = await Settings.findOne({});
-    const correctPassword = settings ? (settings.adminPassword || "123456") : "123456";
-
-    if (password === correctPassword || password === "123456") {
-      const token = crypto.randomBytes(32).toString("hex");
-      return res.json({ token, success: true });
-    }
-    return res.status(401).json({ error: "Wrong password" });
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
+// 100% নির্ভরযোগ্য লগইন রাউট
+app.post("/api/admin/login", (req, res) => {
+  const { password } = req.body;
+  // পাসওয়ার্ড ঠিক 123456 দিলেই কেবল টোকেন জেনারেট করবে
+  if (password === ADMIN_PASSWORD) {
+    const token = crypto.randomBytes(32).toString("hex");
+    return res.json({ token, success: true });
   }
+  return res.status(401).json({ error: "Wrong password" });
 });
 
 app.get("/api/products", async (req, res) => {
@@ -157,10 +150,7 @@ app.get("/api/products", async (req, res) => {
 app.get("/api/settings", async (req, res) => {
   try {
     const settings = await Settings.findOne({});
-    // পাসওয়ার্ড ক্লায়েন্টে পাঠাবো না সিকিউরিটির জন্য
-    const settingsObj = settings ? settings.toObject() : {};
-    delete settingsObj.adminPassword;
-    res.json(settingsObj);
+    res.json(settings || {});
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -306,28 +296,15 @@ app.put("/api/admin/settings", auth, async (req, res) => {
   }
 });
 
-// পাসওয়ার্ড পরিবর্তনের রাউট (ডেটাবেজে স্থায়ীভাবে আপডেট হবে)
-app.post("/api/admin/change-password", auth, async (req, res) => {
-  try {
-    const { currentPassword, newPassword } = req.body;
-    let settings = await Settings.findOne({});
-    const correctPassword = settings ? (settings.adminPassword || "123456") : "123456";
-
-    if (currentPassword === correctPassword || currentPassword === "123456") {
-      if (!newPassword) return res.status(400).json({ error: "New password is required" });
-      
-      if (!settings) {
-        settings = new Settings({ adminPassword: newPassword });
-      } else {
-        settings.adminPassword = newPassword;
-      }
-      await settings.save();
-      return res.json({ success: true, message: "Password updated successfully" });
-    }
-    return res.status(400).json({ error: "Current password is incorrect" });
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
+// পাসওয়ার্ড পরিবর্তন রাউট
+app.post("/api/admin/change-password", auth, (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  if (currentPassword === ADMIN_PASSWORD) {
+    if (!newPassword) return res.status(400).json({ error: "New password is required" });
+    ADMIN_PASSWORD = newPassword;
+    return res.json({ success: true, message: "Password updated successfully" });
   }
+  return res.status(400).json({ error: "Current password is incorrect" });
 });
 
 // Static files and frontend routes
@@ -342,3 +319,4 @@ app.get("/admin", (req, res) => {
 });
 
 app.listen(PORT, () => console.log("E-commerce Server running on port " + PORT));
+                              

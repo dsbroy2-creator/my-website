@@ -21,7 +21,7 @@
         <div class="card p-4 shadow-sm">
             <h3 class="text-center mb-3">অ্যাডমিন লগইন</h3>
             <div class="mb-3">
-                <label class="form-label">পাসওয়ার্ড (123456 দিন)</label>
+                <label class="form-label">পাসওয়ার্ড (ডিফল্ট: 123456)</label>
                 <input type="password" id="adminPass" class="form-control" placeholder="পাসওয়ার্ড লিখুন">
             </div>
             <button onclick="loginAdmin()" class="btn btn-primary w-100">লগইন করুন</button>
@@ -192,19 +192,19 @@
 
         async function loginAdmin() {
             const password = document.getElementById("adminPass").value;
+            const errorDiv = document.getElementById("loginError");
+            errorDiv.innerText = "";
             try {
                 const res = await axios.post("/api/admin/login", { password });
-                token = res.data.token;
-                localStorage.setItem("adminToken", token);
-                document.getElementById("loginSection").style.display = "none";
-                document.getElementById("dashboardSection").style.display = "block";
-                loadAllData();
+                if (res.data.token) {
+                    token = res.data.token;
+                    localStorage.setItem("adminToken", token);
+                    document.getElementById("loginSection").style.display = "none";
+                    document.getElementById("dashboardSection").style.display = "block";
+                    loadAllData();
+                }
             } catch (err) {
-                // লুপ এড়ানোর জন্য ব্যাকআপ বাইপাস
-                localStorage.setItem("adminToken", "fixed-admin-token-12345");
-                document.getElementById("loginSection").style.display = "none";
-                document.getElementById("dashboardSection").style.display = "block";
-                loadAllData();
+                errorDiv.innerText = "ভুল পাসওয়ার্ড! সঠিক পাসওয়ার্ড দিয়ে চেষ্টা করুন।";
             }
         }
 
@@ -381,4 +381,5 @@
             const currentPassword = document.getElementById("currPass").value;
             const newPassword = document.getElementById("newPass").value;
             try {
-                const res = await axios.post("/api/admin/change-password", { currentPassword, newPassword }, { h
+                const res = await axios.post("/api/admin/change-password", { currentPassword, newPassword }, { headers: { "x-admin-token": token } });
+           

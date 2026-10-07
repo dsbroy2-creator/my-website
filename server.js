@@ -250,14 +250,15 @@ app.put("/api/admin/settings", auth, async (req, res) => {
   }
 });
 
-// Static files and frontend catch-all route (safe check)
-const publicPath = path.join(__dirname, "public");
-if (fs.existsSync(publicPath)) {
-  app.use(express.static(publicPath));
-  app.get("*", (req, res) => {
-    res.sendFile(path.join(publicPath, "index.html"));
-  });
-}
+// Static files and frontend routes from root directory
+app.use(express.static(__dirname));
+
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
+
+app.get("/admin", (req, res) => {
+  res.sendFile(path.join(__dirname, "admin.html"));
+});
 
 app.listen(PORT, () => console.log("Shop running on port " + PORT));
-      

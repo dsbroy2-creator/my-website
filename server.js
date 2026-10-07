@@ -17,14 +17,50 @@ if (MONGO_URI) {
     .catch(err => console.error("MongoDB Connection Error:", err));
 }
 
-// Define Schemas and Models
+// Advanced Schemas
 const productSchema = new mongoose.Schema({
   id: String,
   name: String,
   price: Number,
+  regularPrice: Number,
+  discount: Number,
   description: String,
   image: String,
-  stock: Boolean
+  stock: Number,
+  category: String,
+  sku: String,
+  featured: { type: Boolean, default: false },
+  active: { type: Boolean, default: true }
+});
+
+const orderSchema = new mongoose.Schema({
+  id: String,
+  customer: {
+    name: String,
+    phone: String,
+    address: String,
+    city: String
+  },
+  items: Array,
+  payment: {
+    method: String,
+    trxId: String,
+    status: { type: String, default: "Pending" }
+  },
+  status: { type: String, default: "Pending" }, // Pending, Confirmed, Processing, Shipped, Delivered, Cancelled
+  totalPrice: Number,
+  deliveryCharge: Number,
+  discountAmount: Number,
+  orderNote: String,
+  date: { type: Number, default: Date.now }
+});
+
+const couponSchema = new mongoose.Schema({
+  code: String,
+  discountType: String, // percentage / fixed
+  discountValue: Number,
+  minOrderAmount: Number,
+  active: { type: Boolean, default: true }
 });
 
 const settingsSchema = new mongoose.Schema({
@@ -33,31 +69,24 @@ const settingsSchema = new mongoose.Schema({
   whatsapp: String,
   bkash: String,
   currency: String,
+  deliveryInsideDhaka: Number,
+  deliveryOutsideDhaka: Number,
   deliveryText: String
 });
 
-const orderSchema = new mongoose.Schema({
-  id: String,
-  customer: Object,
-  items: Array,
-  payment: Object,
-  status: String,
-  date: Number
-});
-
 const Product = mongoose.model("Product", productSchema);
-const Settings = mongoose.model("Settings", settingsSchema);
 const Order = mongoose.model("Order", orderSchema);
+const Coupon = mongoose.model("Coupon", couponSchema);
+const Settings = mongoose.model("Settings", settingsSchema);
 
-// Initial default data seeding
+// Initial Seeding
 async function seedDefaults() {
   try {
     const pCount = await Product.countDocuments();
     if (pCount === 0) {
       await Product.insertMany([
-        { id: "p1", name: "Sunglasses", price: 0, description: "অসাধারণ পণ্যের description এখানে লিখুন", image: "", stock: true },
-        { id: "p2", name: "Wallet / Money Bag", price: 0, description: "অসাধারণ পণ্যের description এখানে লিখুন", image: "", stock: true },
-        { id: "p3", name: "Premium Black Watch", price: 400, description: "Premium quality stylish watch.", image: "watch.jpg", stock: true }
+        { id: "p1", name: "Sunglasses", price: 350, regularPrice: 500, description: "Stylish UV protection sunglasses", image: "", stock: 10, category: "Eyewear", sku: "SG-01", featured: true },
+        { id: "p2", name: "Wallet / Money Bag", price: 450, regularPrice: 600, description: "Leather premium wallet", image: "", stock: 15, category: "Accessories", sku: "WL-02", featured: true }
       ]);
     }
 
@@ -69,6 +98,8 @@ async function seedDefaults() {
         whatsapp: "01870697987",
         bkash: "০১৮৭০৬৯৭৯৮৭",
         currency: "৳",
+        deliveryInsideDhaka: 60,
+        deliveryOutsideDhaka: 120,
         deliveryText: "সারা বাংলাদেশে ডেলিভারি সুবিধা ও ক্যাশ অন ডেলিভারি সিস্টেম।"
       });
     }
@@ -89,10 +120,7 @@ const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, UPLOADS_DIR),
   filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname)
 });
-const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 }
-});
+const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
 function auth(req, res, next) {
   const token = req.headers["x-admin-token"] || req.headers["x-admin-value"];
@@ -102,7 +130,7 @@ function auth(req, res, next) {
   next();
 }
 
-// API Routes
+// Public API Routes
 app.post("/api/admin/login", (req, res) => {
   if (req.body.password === ADMIN_PASSWORD) {
     const token = crypto.randomBytes(32).toString("hex");
@@ -113,16 +141,7 @@ app.post("/api/admin/login", (req, res) => {
 
 app.get("/api/products", async (req, res) => {
   try {
-    const products = await Product.find({});
-    res.json(products);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.get("/api/admin/products", auth, async (req, res) => {
-  try {
-    const products = await Product.find({});
+    const products = await Product.find({ active: true });
     res.json(products);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -138,10 +157,32 @@ app.get("/api/settings", async (req, res) => {
   }
 });
 
-app.get("/api/admin/orders", auth, async (req, res) => {
+app.post("/api/orders", async (req, res) => {
   try {
-    const orders = await Order.find({});
-    res.json(orders);
+    const newOrder = new Order({
+      id: "ord_" + Date.now(),
+      customer: req.body.customer,
+      items: req.body.items,
+      payment: req.body.payment,
+      status: "Pending",
+      totalPrice: req.body.totalPrice,
+      deliveryCharge: req.body.deliveryCharge,
+      discountAmount: req.body.discountAmount || 0,
+      orderNote: req.body.orderNote || "",
+      date: Date.now()
+    });
+    await newOrder.save();
+    res.json(newOrder);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin Protected API Routes
+app.get("/api/admin/products", auth, async (req, res) => {
+  try {
+    const products = await Product.find({});
+    res.json(products);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -158,9 +199,14 @@ app.post("/api/admin/products", auth, async (req, res) => {
       id: "p_" + Date.now(),
       name: req.body.name,
       price: Number(req.body.price),
+      regularPrice: Number(req.body.regularPrice || req.body.price),
       description: req.body.description,
       image: req.body.image,
-      stock: req.body.stock === "true" || req.body.stock === true
+      stock: Number(req.body.stock || 0),
+      category: req.body.category || "General",
+      sku: req.body.sku || "SKU-" + Date.now(),
+      featured: req.body.featured === true || req.body.featured === "true",
+      active: true
     });
     await newProduct.save();
     res.json(newProduct);
@@ -176,9 +222,14 @@ app.put("/api/admin/products/:id", auth, async (req, res) => {
       {
         name: req.body.name,
         price: Number(req.body.price),
+        regularPrice: Number(req.body.regularPrice),
         description: req.body.description,
         image: req.body.image,
-        stock: req.body.stock === "true" || req.body.stock === true
+        stock: Number(req.body.stock),
+        category: req.body.category,
+        sku: req.body.sku,
+        featured: req.body.featured,
+        active: req.body.active
       },
       { new: true }
     );
@@ -199,28 +250,20 @@ app.delete("/api/admin/products/:id", auth, async (req, res) => {
   }
 });
 
-app.post("/api/orders", async (req, res) => {
+app.get("/api/admin/orders", auth, async (req, res) => {
   try {
-    const newOrder = new Order({
-      id: "ord_" + Date.now(),
-      customer: req.body.customer,
-      items: req.body.items,
-      payment: req.body.payment,
-      status: "Pending",
-      date: Date.now()
-    });
-    await newOrder.save();
-    res.json(newOrder);
+    const orders = await Order.find({}).sort({ date: -1 });
+    res.json(orders);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.put("/api/admin/orders/:id/payment", auth, async (req, res) => {
+app.put("/api/admin/orders/:id/status", auth, async (req, res) => {
   try {
     const updated = await Order.findOneAndUpdate(
       { id: req.params.id },
-      { payment: req.body.payment },
+      { status: req.body.status },
       { new: true }
     );
     if (!updated) return res.status(404).json({ error: "Order not found" });
@@ -241,6 +284,8 @@ app.put("/api/admin/settings", auth, async (req, res) => {
       settings.whatsapp = req.body.whatsapp || settings.whatsapp;
       settings.bkash = req.body.bkash || settings.bkash;
       settings.currency = req.body.currency || settings.currency;
+      settings.deliveryInsideDhaka = req.body.deliveryInsideDhaka || settings.deliveryInsideDhaka;
+      settings.deliveryOutsideDhaka = req.body.deliveryOutsideDhaka || settings.deliveryOutsideDhaka;
       settings.deliveryText = req.body.deliveryText || settings.deliveryText;
     }
     await settings.save();
@@ -250,7 +295,7 @@ app.put("/api/admin/settings", auth, async (req, res) => {
   }
 });
 
-// Static files and frontend routes from root directory
+// Static files and frontend routes
 app.use(express.static(__dirname));
 
 app.get("/", (req, res) => {
@@ -261,4 +306,4 @@ app.get("/admin", (req, res) => {
   res.sendFile(path.join(__dirname, "admin.html"));
 });
 
-app.listen(PORT, () => console.log("Shop running on port " + PORT));
+app.listen(PORT, () => console.log("E-commerce Server running on port " + PORT));

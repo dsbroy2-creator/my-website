@@ -1,385 +1,1254 @@
 <!DOCTYPE html>
 <html lang="bn">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>প্রিমিয়াম অ্যাডমিন প্যানেল</title>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .sidebar { min-height: 100vh; background: #343a40; color: white; padding-top: 20px; }
-        .sidebar a { color: #cfd4da; text-decoration: none; display: block; padding: 12px 20px; border-radius: 4px; margin-bottom: 5px; }
-        .sidebar a:hover, .sidebar a.active { background: #0d6efd; color: white; }
-        .card { border: none; box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075); margin-bottom: 20px; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Admin Panel - Accessories Adda Hub</title>
+
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+<link
+  href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+  rel="stylesheet"
+>
+
+<style>
+*{
+  box-sizing:border-box;
+}
+
+body{
+  margin:0;
+  background:#f4f6f9;
+  font-family:Arial, sans-serif;
+  color:#222;
+}
+
+/* LOGIN */
+
+#loginPage{
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  background:linear-gradient(135deg,#111,#333);
+}
+
+.login-box{
+  width:100%;
+  max-width:420px;
+  background:#fff;
+  padding:35px;
+  border-radius:18px;
+  box-shadow:0 15px 50px rgba(0,0,0,.3);
+}
+
+.login-box h2{
+  text-align:center;
+  font-weight:700;
+  margin-bottom:10px;
+}
+
+.login-box p{
+  text-align:center;
+  color:#777;
+  margin-bottom:25px;
+}
+
+/* DASHBOARD */
+
+#dashboard{
+  display:none;
+}
+
+.topbar{
+  background:#111;
+  color:#fff;
+  padding:15px 20px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  position:sticky;
+  top:0;
+  z-index:1000;
+}
+
+.topbar h4{
+  margin:0;
+}
+
+.container-main{
+  max-width:1400px;
+  margin:auto;
+  padding:25px;
+}
+
+/* STAT CARDS */
+
+.stat-card{
+  background:#fff;
+  border-radius:15px;
+  padding:22px;
+  box-shadow:0 4px 15px rgba(0,0,0,.08);
+  height:100%;
+}
+
+.stat-title{
+  color:#777;
+  font-size:14px;
+}
+
+.stat-number{
+  font-size:30px;
+  font-weight:700;
+  margin-top:5px;
+}
+
+/* SECTIONS */
+
+.section-card{
+  background:#fff;
+  border-radius:15px;
+  padding:25px;
+  margin-top:25px;
+  box-shadow:0 4px 15px rgba(0,0,0,.07);
+}
+
+.section-title{
+  font-size:22px;
+  font-weight:700;
+  margin-bottom:20px;
+}
+
+/* PRODUCT IMAGE */
+
+.product-image{
+  width:60px;
+  height:60px;
+  object-fit:cover;
+  border-radius:10px;
+  background:#eee;
+}
+
+/* TABLE */
+
+.table-responsive{
+  border-radius:12px;
+}
+
+table{
+  vertical-align:middle;
+}
+
+/* PREVIEW */
+
+.image-preview{
+  width:120px;
+  height:120px;
+  object-fit:cover;
+  border-radius:12px;
+  border:1px solid #ddd;
+  display:none;
+}
+
+/* MOBILE */
+
+@media(max-width:768px){
+
+  .container-main{
+    padding:12px;
+  }
+
+  .section-card{
+    padding:15px;
+  }
+
+  .topbar{
+    padding:12px;
+  }
+
+  .topbar h4{
+    font-size:17px;
+  }
+
+  .stat-number{
+    font-size:24px;
+  }
+
+  .login-box{
+    padding:25px;
+  }
+}
+
+/* LOADING */
+
+.loading{
+  text-align:center;
+  padding:25px;
+  color:#777;
+}
+
+/* EMPTY */
+
+.empty{
+  text-align:center;
+  padding:30px;
+  color:#888;
+}
+</style>
 </head>
+
 <body>
 
-    <!-- Login Section -->
-    <div id="loginSection" class="container mt-5" style="max-width: 400px;">
-        <div class="card p-4 shadow-sm">
-            <h3 class="text-center mb-3">অ্যাডমিন লগইন</h3>
-            <div class="mb-3">
-                <label class="form-label">পাসওয়ার্ড (ডিফল্ট: 123456)</label>
-                <input type="password" id="adminPass" class="form-control" placeholder="পাসওয়ার্ড লিখুন">
-            </div>
-            <button onclick="loginAdmin()" class="btn btn-primary w-100">লগইন করুন</button>
-            <div id="loginError" class="text-danger mt-2 text-center"></div>
+<!-- =========================
+     LOGIN PAGE
+========================= -->
+
+<div id="loginPage">
+
+  <div class="login-box">
+
+    <h2>Admin Login</h2>
+
+    <p>Accessories Adda Hub</p>
+
+    <div id="loginError" class="alert alert-danger d-none"></div>
+
+    <label class="form-label">
+      Admin Password
+    </label>
+
+    <input
+      type="password"
+      id="adminPass"
+      class="form-control mb-3"
+      placeholder="পাসওয়ার্ড লিখুন"
+      autocomplete="off"
+    >
+
+    <button
+      class="btn btn-dark w-100"
+      onclick="loginAdmin()"
+      id="loginButton"
+    >
+      Login
+    </button>
+
+  </div>
+
+</div>
+
+
+<!-- =========================
+     DASHBOARD
+========================= -->
+
+<div id="dashboard">
+
+  <!-- TOP BAR -->
+
+  <div class="topbar">
+
+    <h4>
+      Accessories Adda Hub - Admin
+    </h4>
+
+    <button
+      class="btn btn-danger btn-sm"
+      onclick="logout()"
+    >
+      Logout
+    </button>
+
+  </div>
+
+
+  <div class="container-main">
+
+    <!-- =========================
+         STATISTICS
+    ========================= -->
+
+    <div class="row g-3">
+
+      <div class="col-6 col-lg-3">
+
+        <div class="stat-card">
+
+          <div class="stat-title">
+            মোট পণ্য
+          </div>
+
+          <div
+            class="stat-number"
+            id="totalProducts"
+          >
+            0
+          </div>
+
         </div>
+
+      </div>
+
+
+      <div class="col-6 col-lg-3">
+
+        <div class="stat-card">
+
+          <div class="stat-title">
+            মোট অর্ডার
+          </div>
+
+          <div
+            class="stat-number"
+            id="totalOrders"
+          >
+            0
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <div class="col-6 col-lg-3">
+
+        <div class="stat-card">
+
+          <div class="stat-title">
+            Pending Order
+          </div>
+
+          <div
+            class="stat-number"
+            id="pendingOrders"
+          >
+            0
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <div class="col-6 col-lg-3">
+
+        <div class="stat-card">
+
+          <div class="stat-title">
+            মোট বিক্রি
+          </div>
+
+          <div
+            class="stat-number"
+            id="totalSales"
+          >
+            ৳0
+          </div>
+
+        </div>
+
+      </div>
+
     </div>
 
-    <!-- Dashboard Section -->
-    <div id="dashboardSection" class="container-fluid" style="display: none;">
-        <div class="row">
-            <!-- Sidebar -->
-            <div class="col-md-2 sidebar d-none d-md-block">
-                <h4 class="text-center mb-4">অ্যাডমিন প্যানেল</h4>
-                <a href="#" onclick="switchTab('products')" class="active" id="nav-products">📦 পণ্য ম্যানেজমেন্ট</a>
-                <a href="#" onclick="switchTab('orders')" id="nav-orders">🛒 অর্ডার ম্যানেজমেন্ট</a>
-                <a href="#" onclick="switchTab('settings')" id="nav-settings">⚙️ সেটিংস ও ডিজাইন</a>
-                <a href="#" onclick="logout()" class="text-danger mt-5">🚪 লগআউট</a>
+
+    <!-- =========================
+         PRODUCT MANAGEMENT
+    ========================= -->
+
+    <div class="section-card">
+
+      <div class="section-title">
+        🛍️ Product Management
+      </div>
+
+
+      <form id="productForm" onsubmit="saveProduct(event)">
+
+        <input
+          type="hidden"
+          id="productId"
+        >
+
+
+        <div class="row g-3">
+
+          <div class="col-md-6">
+
+            <label class="form-label">
+              Product Name
+            </label>
+
+            <input
+              type="text"
+              id="productName"
+              class="form-control"
+              required
+            >
+
+          </div>
+
+
+          <div class="col-md-3">
+
+            <label class="form-label">
+              Sale Price
+            </label>
+
+            <input
+              type="number"
+              id="productPrice"
+              class="form-control"
+              min="0"
+              required
+            >
+
+          </div>
+
+
+          <div class="col-md-3">
+
+            <label class="form-label">
+              Regular Price
+            </label>
+
+            <input
+              type="number"
+              id="regularPrice"
+              class="form-control"
+              min="0"
+            >
+
+          </div>
+
+
+          <div class="col-md-4">
+
+            <label class="form-label">
+              Stock
+            </label>
+
+            <input
+              type="number"
+              id="productStock"
+              class="form-control"
+              min="0"
+              value="0"
+            >
+
+          </div>
+
+
+          <div class="col-md-4">
+
+            <label class="form-label">
+              Category
+            </label>
+
+            <input
+              type="text"
+              id="productCategory"
+              class="form-control"
+              placeholder="Eyewear"
+            >
+
+          </div>
+
+
+          <div class="col-md-4">
+
+            <label class="form-label">
+              SKU
+            </label>
+
+            <input
+              type="text"
+              id="productSku"
+              class="form-control"
+              placeholder="SKU-001"
+            >
+
+          </div>
+
+
+          <div class="col-12">
+
+            <label class="form-label">
+              Product Description
+            </label>
+
+            <textarea
+              id="productDescription"
+              class="form-control"
+              rows="4"
+            ></textarea>
+
+          </div>
+
+
+          <div class="col-md-8">
+
+            <label class="form-label">
+              Product Image
+            </label>
+
+            <input
+              type="file"
+              id="productImageFile"
+              class="form-control"
+              accept="image/*"
+              onchange="uploadImage(this)"
+            >
+
+            <input
+              type="hidden"
+              id="productImage"
+            >
+
+            <small
+              class="text-muted"
+              id="uploadStatus"
+            ></small>
+
+          </div>
+
+
+          <div class="col-md-4">
+
+            <img
+              id="imagePreview"
+              class="image-preview"
+              alt="Preview"
+            >
+
+          </div>
+
+
+          <div class="col-12">
+
+            <div class="form-check">
+
+              <input
+                type="checkbox"
+                class="form-check-input"
+                id="productFeatured"
+              >
+
+              <label
+                class="form-check-label"
+                for="productFeatured"
+              >
+                Featured Product
+              </label>
+
             </div>
 
-            <!-- Main Content -->
-            <div class="col-md-10 ms-sm-auto px-md-4 py-4">
-                
-                <!-- Products Tab -->
-                <div id="tab-products" class="content-tab">
-                    <h2 class="mb-4">পণ্য তালিকা ও নতুন পণ্য যোগ</h2>
-                    
-                    <div class="card p-3 mb-4">
-                        <h5>নতুন পণ্য যোগ করুন</h5>
-                        <form id="productForm" onsubmit="saveProduct(event)">
-                            <input type="hidden" id="editProductId">
-                            <div class="row g-3">
-                                <div class="col-md-4">
-                                    <input type="text" id="pName" class="form-control" placeholder="পণ্যের নাম" required>
-                                </div>
-                                <div class="col-md-3">
-                                    <input type="number" id="pPrice" class="form-control" placeholder="মূল্য (৳)" required>
-                                </div>
-                                <div class="col-md-3">
-                                    <input type="number" id="pStock" class="form-control" placeholder="স্টক পরিমাণ" required>
-                                </div>
-                                <div class="col-md-2">
-                                    <input type="text" id="pCategory" class="form-control" placeholder="ক্যাটাগরি">
-                                </div>
-                                <div class="col-md-6">
-                                    <input type="text" id="pImage" class="form-control" placeholder="ছবির লিংক বা আপলোড করুন">
-                                </div>
-                                <div class="col-md-6">
-                                    <input type="file" id="pImageFile" class="form-control" onchange="uploadImage(this)">
-                                </div>
-                                <div class="col-md-12">
-                                    <textarea id="pDesc" class="form-control" placeholder="পণ্যের বিবরণ..."></textarea>
-                                </div>
-                                <div class="col-md-12">
-                                    <button type="submit" class="btn btn-success" id="saveProductBtn">পণ্য সংরক্ষণ করুন</button>
-                                    <button type="button" class="btn btn-secondary ms-2" onclick="resetProductForm()">রিসেট</button>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
+          </div>
 
-                    <div class="card p-3">
-                        <h5>সকল পণ্যের তালিকা</h5>
-                        <div class="table-responsive">
-                            <table class="table table-striped align-middle">
-                                <thead>
-                                    <tr>
-                                        <th>নাম</th>
-                                        <th>মূল্য</th>
-                                        <th>স্টক</th>
-                                        <th>ক্যাটাগরি</th>
-                                        <th>কার্যক্রম</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="productList"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- Orders Tab -->
-                <div id="tab-orders" class="content-tab" style="display: none;">
-                    <h2 class="mb-4">অর্ডার ম্যানেজমেন্ট</h2>
-                    <div class="card p-3">
-                        <div class="table-responsive">
-                            <table class="table table-bordered align-middle">
-                                <thead>
-                                    <tr>
-                                        <th>অর্ডার আইডি</th>
-                                        <th>গ্রাহকের বিবরণ</th>
-                                        <th>পণ্যসমূহ</th>
-                                        <th>মোট টাকা</th>
-                                        <th>স্ট্যাটাস</th>
-                                        <th>পদক্ষেপ</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="orderList"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
+          <div class="col-12">
 
-                <!-- Settings & Customization Tab -->
-                <div id="tab-settings" class="content-tab" style="display: none;">
-                    <h2 class="mb-4">ওয়েবসাইট সেটিংস, লোগো ও লেআউট কন্ট্রোল</h2>
-                    <div class="card p-4" style="max-width: 650px;">
-                        <form onsubmit="saveSettings(event)">
-                            <div class="mb-3">
-                                <label class="form-label">দোকানের নাম</label>
-                                <input type="text" id="sName" class="form-control">
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">ট্যাগলাইন</label>
-                                <input type="text" id="sTag" class="form-control">
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">হোয়াটসঅ্যাপ নম্বর</label>
-                                <input type="text" id="sWhatsapp" class="form-control">
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">বিকাশ নম্বর</label>
-                                <input type="text" id="sBkash" class="form-control">
-                            </div>
-                            <hr class="my-4">
-                            <h5>🎨 ডিজাইন ও লেআউট ম্যানেজমেন্ট</h5>
-                            <div class="mb-3">
-                                <label class="form-label">ওয়েবসাইট লোগো লিংক</label>
-                                <input type="text" id="sLogo" class="form-control" placeholder="লোগোর ইমেজ লিংক দিন">
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">হোমপেজে পণ্য প্রদর্শনের লেআউট (Grid View)</label>
-                                <select id="sLayout" class="form-select">
-                                    <option value="grid-4">একসাথে ৪টি পণ্য (4 Columns Grid - ডিফল্ট)</option>
-                                    <option value="grid-3">একসাথে ৩টি পণ্য (3 Columns Grid)</option>
-                                    <option value="grid-1">একসাথে ১টি পণ্য (Single List View)</option>
-                                </select>
-                            </div>
-                            <button type="submit" class="btn btn-primary">সেটিংস ও লেআউট সেভ করুন</button>
-                        </form>
+            <button
+              type="submit"
+              class="btn btn-success"
+              id="saveProductButton"
+            >
+              Save Product
+            </button>
 
-                        <hr class="my-4">
-                        <h5>🔐 অ্যাডমিন পাসওয়ার্ড পরিবর্তন</h5>
-                        <form onsubmit="changePassword(event)">
-                            <div class="mb-3">
-                                <label class="form-label">বর্তমান পাসওয়ার্ড</label>
-                                <input type="password" id="currPass" class="form-control" placeholder="বর্তমান পাসওয়ার্ড দিন" required>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">নতুন পাসওয়ার্ড</label>
-                                <input type="password" id="newPass" class="form-control" placeholder="নতুন পাসওয়ার্ড দিন" required>
-                            </div>
-                            <button type="submit" class="btn btn-warning">পাসওয়ার্ড পরিবর্তন করুন</button>
-                        </form>
-                    </div>
-                </div>
+            <button
+              type="button"
+              class="btn btn-secondary"
+              onclick="resetProductForm()"
+            >
+              Reset
+            </button>
 
-            </div>
+          </div>
+
         </div>
+
+      </form>
+
     </div>
 
-    <script>
-        let token = localStorage.getItem("adminToken") || "";
 
-        if (token) {
-            document.getElementById("loginSection").style.display = "none";
-            document.getElementById("dashboardSection").style.display = "block";
-            loadAllData();
-        }
+    <!-- =========================
+         PRODUCT LIST
+    ========================= -->
 
-        async function loginAdmin() {
-            const password = document.getElementById("adminPass").value;
-            const errorDiv = document.getElementById("loginError");
-            errorDiv.innerText = "";
-            try {
-                const res = await axios.post("/api/admin/login", { password });
-                if (res.data.token) {
-                    token = res.data.token;
-                    localStorage.setItem("adminToken", token);
-                    document.getElementById("loginSection").style.display = "none";
-                    document.getElementById("dashboardSection").style.display = "block";
-                    loadAllData();
-                }
-            } catch (err) {
-                errorDiv.innerText = "ভুল পাসওয়ার্ড! সঠিক পাসওয়ার্ড দিয়ে চেষ্টা করুন।";
-            }
-        }
+    <div class="section-card">
 
-        function logout() {
-            localStorage.removeItem("adminToken");
-            location.reload();
-        }
+      <div class="section-title">
+        📦 All Products
+      </div>
 
-        function switchTab(tabName) {
-            document.querySelectorAll('.content-tab').forEach(el => el.style.display = 'none');
-            document.querySelectorAll('.sidebar a').forEach(el => el.classList.remove('active'));
-            document.getElementById('tab-' + tabName).style.display = 'block';
-            document.getElementById('nav-' + tabName).classList.add('active');
-        }
+      <div
+        id="productList"
+        class="table-responsive"
+      >
 
-        async function loadAllData() {
-            loadProducts();
-            loadOrders();
-            loadSettings();
-        }
+        <div class="loading">
+          Loading products...
+        </div>
 
-        async function loadProducts() {
-            try {
-                const res = await axios.get("/api/admin/products", { headers: { "x-admin-token": token } });
-                const tbody = document.getElementById("productList");
-                tbody.innerHTML = "";
-                res.data.forEach(p => {
-                    tbody.innerHTML += `
-                        <tr>
-                            <td>${p.name}</td>
-                            <td>৳${p.price}</td>
-                            <td>${p.stock} টি</td>
-                            <td>${p.category || 'General'}</td>
-                            <td>
-                                <button class="btn btn-sm btn-primary me-1" onclick='editProduct(${JSON.stringify(p)})'>এডিট</button>
-                                <button class="btn btn-sm btn-danger" onclick="deleteProduct('${p.id}')">ডিলিট</button>
-                            </td>
-                        </tr>
-                    `;
-                });
-            } catch (err) { console.error(err); }
-        }
+      </div>
 
-        async function uploadImage(input) {
-            if (!input.files[0]) return;
-            const formData = new FormData();
-            formData.append("image", input.files[0]);
-            try {
-                const res = await axios.post("/api/admin/upload", formData, {
-                    headers: { "x-admin-token": token, "Content-Type": "multipart/form-data" }
-                });
-                document.getElementById("pImage").value = res.data.url;
-                alert("ছবি সফলভাবে আপলোড হয়েছে!");
-            } catch (err) { alert("ছবি আপলোড ব্যর্থ হয়েছে।"); }
-        }
+    </div>
 
-        async function saveProduct(e) {
-            e.preventDefault();
-            const id = document.getElementById("editProductId").value;
-            const productData = {
-                name: document.getElementById("pName").value,
-                price: document.getElementById("pPrice").value,
-                stock: document.getElementById("pStock").value,
-                category: document.getElementById("pCategory").value,
-                image: document.getElementById("pImage").value,
-                description: document.getElementById("pDesc").value
-            };
 
-            try {
-                if (id) {
-                    await axios.put(`/api/admin/products/${id}`, productData, { headers: { "x-admin-token": token } });
-                } else {
-                    await axios.post("/api/admin/products", productData, { headers: { "x-admin-token": token } });
-                }
-                resetProductForm();
-                loadProducts();
-                alert("পণ্য সফলভাবে সংরক্ষিত হয়েছে!");
-            } catch (err) { alert("সংরক্ষণ করতে সমস্যা হয়েছে।"); }
-        }
+    <!-- =========================
+         ORDERS
+    ========================= -->
 
-        function editProduct(p) {
-            document.getElementById("editProductId").value = p.id;
-            document.getElementById("pName").value = p.name;
-            document.getElementById("pPrice").value = p.price;
-            document.getElementById("pStock").value = p.stock || 0;
-            document.getElementById("pCategory").value = p.category || "";
-            document.getElementById("pImage").value = p.image || "";
-            document.getElementById("pDesc").value = p.description || "";
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
+    <div class="section-card">
 
-        function resetProductForm() {
-            document.getElementById("productForm").reset();
-            document.getElementById("editProductId").value = "";
-        }
+      <div class="section-title">
+        🧾 Order Management
+      </div>
 
-        async function deleteProduct(id) {
-            if (!confirm("আপনি কি নিশ্চিত পণ্যটি ডিলিট করতে চান?")) return;
-            try {
-                await axios.delete(`/api/admin/products/${id}`, { headers: { "x-admin-token": token } });
-                loadProducts();
-            } catch (err) { alert("ডিলিট করতে সমস্যা হয়েছে।"); }
-        }
+      <div
+        id="orderList"
+        class="table-responsive"
+      >
 
-        async function loadOrders() {
-            try {
-                const res = await axios.get("/api/admin/orders", { headers: { "x-admin-token": token } });
-                const tbody = document.getElementById("orderList");
-                tbody.innerHTML = "";
-                res.data.forEach(o => {
-                    let itemsHtml = o.items.map(i => `${i.name} (${i.quantity}x)`).join(", ");
-                    tbody.innerHTML += `
-                        <tr>
-                            <td><b>${o.id}</b></td>
-                            <td>${o.customer.name}<br>${o.customer.phone}<br>${o.customer.address}</td>
-                            <td>${itemsHtml}</td>
-                            <td>৳${o.totalPrice || 0}</td>
-                            <td>
-                                <select class="form-select form-select-sm" onchange="updateOrderStatus('${o.id}', this.value)">
-                                    <option ${o.status === 'Pending' ? 'selected' : ''}>Pending</option>
-                                    <option ${o.status === 'Confirmed' ? 'selected' : ''}>Confirmed</option>
-                                    <option ${o.status === 'Processing' ? 'selected' : ''}>Processing</option>
-                                    <option ${o.status === 'Shipped' ? 'selected' : ''}>Shipped</option>
-                                    <option ${o.status === 'Delivered' ? 'selected' : ''}>Delivered</option>
-                                    <option ${o.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
-                                </select>
-                            </td>
-                            <td><span class="badge bg-secondary">${o.status}</span></td>
-                        </tr>
-                    `;
-                });
-            } catch (err) { console.error(err); }
-        }
+        <div class="loading">
+          Loading orders...
+        </div>
 
-        async function updateOrderStatus(orderId, status) {
-            try {
-                await axios.put(`/api/admin/orders/${orderId}/status`, { status }, { headers: { "x-admin-token": token } });
-                loadOrders();
-            } catch (err) { alert("স্ট্যাটাস আপডেট ব্যর্থ হয়েছে।"); }
-        }
+      </div>
 
-        async function loadSettings() {
-            try {
-                const res = await axios.get("/api/settings");
-                if (res.data) {
-                    document.getElementById("sName").value = res.data.storeName || "";
-                    document.getElementById("sTag").value = res.data.tagLine || "";
-                    document.getElementById("sWhatsapp").value = res.data.whatsapp || "";
-                    document.getElementById("sBkash").value = res.data.bkash || "";
-                    document.getElementById("sLogo").value = res.data.logo || "";
-                    document.getElementById("sLayout").value = res.data.layout || "grid-4";
-                }
-            } catch (err) { console.error(err); }
-        }
+    </div>
 
-        async function saveSettings(e) {
-            e.preventDefault();
-            const data = {
-                storeName: document.getElementById("sName").value,
-                tagLine: document.getElementById("sTag").value,
-                whatsapp: document.getElementById("sWhatsapp").value,
-                bkash: document.getElementById("sBkash").value,
-                logo: document.getElementById("sLogo").value,
-                layout: document.getElementById("sLayout").value
-            };
-            try {
-                await axios.put("/api/admin/settings", data, { headers: { "x-admin-token": token } });
-                alert("সেটিংস ও ডিজাইন সফলভাবে আপডেট হয়েছে!");
-            } catch (err) { alert("সেটিংস আপডেট ব্যর্থ হয়েছে।"); }
-        }
 
-        async function changePassword(e) {
-            e.preventDefault();
-            const currentPassword = document.getElementById("currPass").value;
-            const newPassword = document.getElementById("newPass").value;
-            try {
-                const res = await axios.post("/api/admin/change-password", { currentPassword, newPassword }, { headers: { "x-admin-token": token } });
-           
+    <!-- =========================
+         WEBSITE SETTINGS
+    ========================= -->
+
+    <div class="section-card">
+
+      <div class="section-title">
+        ⚙️ Website Settings
+      </div>
+
+
+      <form onsubmit="saveSettings(event)">
+
+        <div class="row g-3">
+
+          <div class="col-md-6">
+
+            <label class="form-label">
+              Store Name
+            </label>
+
+            <input
+              type="text"
+              id="storeName"
+              class="form-control"
+            >
+
+          </div>
+
+
+          <div class="col-md-6">
+
+            <label class="form-label">
+              Tag Line
+            </label>
+
+            <input
+              type="text"
+              id="tagLine"
+              class="form-control"
+            >
+
+          </div>
+
+
+          <div class="col-md-6">
+
+            <label class="form-label">
+              WhatsApp Number
+            </label>
+
+            <input
+              type="text"
+              id="whatsapp"
+              class="form-control"
+            >
+
+          </div>
+
+
+          <div class="col-md-6">
+
+            <label class="form-label">
+              bKash Number
+            </label>
+
+            <input
+              type="text"
+              id="bkash"
+              class="form-control"
+            >
+
+          </div>
+
+
+          <div class="col-md-4">
+
+            <label class="form-label">
+              Currency
+            </label>
+
+            <input
+              type="text"
+              id="currency"
+              class="form-control"
+              value="৳"
+            >
+
+          </div>
+
+
+          <div class="col-md-4">
+
+            <label class="form-label">
+              Delivery Inside Dhaka
+            </label>
+
+            <input
+              type="number"
+              id="deliveryInsideDhaka"
+              class="form-control"
+              min="0"
+            >
+
+          </div>
+
+
+          <div class="col-md-4">
+
+            <label class="form-label">
+              Delivery Outside Dhaka
+            </label>
+
+            <input
+              type="number"
+              id="deliveryOutsideDhaka"
+              class="form-control"
+              min="0"
+            >
+
+          </div>
+
+
+          <div class="col-md-6">
+
+            <label class="form-label">
+              Website Layout
+            </label>
+
+            <select
+              id="layout"
+              class="form-select"
+            >
+
+              <option value="grid-2">
+                2 Products Per Row
+              </option>
+
+              <option value="grid-3">
+                3 Products Per Row
+              </option>
+
+              <option value="grid-4">
+                4 Products Per Row
+              </option>
+
+            </select>
+
+          </div>
+
+
+          <div class="col-md-6">
+
+            <label class="form-label">
+              Delivery Text
+            </label>
+
+            <input
+              type="text"
+              id="deliveryText"
+              class="form-control"
+            >
+
+          </div>
+
+
+          <div class="col-12">
+
+            <label class="form-label">
+              Logo URL
+            </label>
+
+            <input
+              type="text"
+              id="logo"
+              class="form-control"
+              placeholder="/uploads/logo.png"
+            >
+
+          </div>
+
+
+          <div class="col-12">
+
+            <button
+              type="submit"
+              class="btn btn-primary"
+            >
+              Save Website Settings
+            </button>
+
+          </div>
+
+        </div>
+
+      </form>
+
+    </div>
+
+
+    <!-- =========================
+         CHANGE PASSWORD
+    ========================= -->
+
+    <div class="section-card">
+
+      <div class="section-title">
+        🔐 Change Admin Password
+      </div>
+
+
+      <form onsubmit="changePassword(event)">
+
+        <div class="row g-3">
+
+          <div class="col-md-6">
+
+            <label class="form-label">
+              Current Password
+            </label>
+
+            <input
+              type="password"
+              id="currentPassword"
+              class="form-control"
+              placeholder="বর্তমান পাসওয়ার্ড"
+              autocomplete="off"
+              required
+            >
+
+          </div>
+
+
+          <div class="col-md-6">
+
+            <label class="form-label">
+              New Password
+            </label>
+
+            <input
+              type="password"
+              id="newPassword"
+              class="form-control"
+              placeholder="নতুন পাসওয়ার্ড"
+              autocomplete="off"
+              required
+            >
+
+          </div>
+
+
+          <div class="col-12">
+
+            <button
+              type="submit"
+              class="btn btn-warning"
+            >
+              Change Password
+            </button>
+
+          </div>
+
+        </div>
+
+      </form>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<script>
+
+/* =========================================
+   GLOBAL VARIABLES
+========================================= */
+
+let token = localStorage.getItem("adminToken") || "";
+
+let products = [];
+let orders = [];
+
+
+/* =========================================
+   AXIOS AUTH HEADER
+========================================= */
+
+function authConfig(){
+
+  return {
+    headers:{
+      "x-admin-token": token
+    }
+  };
+
+}
+
+
+/* =========================================
+   PAGE LOAD
+========================================= */
+
+document.addEventListener("DOMContentLoaded", function(){
+
+  if(token){
+
+    checkLogin();
+
+  }
+
+});
+
+
+/* =========================================
+   CHECK LOGIN
+========================================= */
+
+async function checkLogin(){
+
+  try{
+
+    await axios.get(
+      "/api/admin/products",
+      authConfig()
+    );
+
+    showDashboard();
+
+  }catch(error){
+
+    localStorage.removeItem("adminToken");
+
+    token = "";
+
+    showLogin();
+
+  }
+
+}
+
+
+/* =========================================
+   SHOW LOGIN
+========================================= */
+
+function showLogin(){
+
+  document.getElementById("loginPage").style.display = "flex";
+
+  document.getElementById("dashboard").style.display = "none";
+
+}
+
+
+/* =========================================
+   SHOW DASHBOARD
+========================================= */
+
+function showDashboard(){
+
+  document.getElementById("loginPage").style.display = "none";
+
+  document.getElementById("dashboard").style.display = "block";
+
+  loadAllData();
+
+}
+
+
+/* =========================================
+   LOGIN
+========================================= */
+
+async function loginAdmin(){
+
+  const password =
+    document.getElementById("adminPass").value.trim();
+
+  const errorBox =
+    document.getElementById("loginError");
+
+  const button =
+    document.getElementById("loginButton");
+
+
+  errorBox.classList.add("d-none");
+
+  if(!password){
+
+    errorBox.textContent =
+      "পাসওয়ার্ড লিখুন।";
+
+    errorBox.classList.remove("d-none");
+
+    return;
+
+  }
+
+
+  button.disabled = true;
+
+  button.textContent = "Logging in...";
+
+
+  try{
+
+    const response = await axios.post(
+      "/api/admin/login",
+      {
+        password: password
+      }
+    );
+
+
+    if(response.data && response.data.token){
+
+      token = response.data.token;
+
+      localStorage.setItem(
+        "adminToken",
+        token
+      );
+
+      document.getElementById("adminPass").value = "";
+
+      showDashboard();
+
+    }else{
+
+      throw new Error("Token missing");
+
+    }
+
+
+  }catch(error){
+
+    errorBox.textContent =
+      error.response?.data?.error ||
+      "পাসওয়ার্ড ভুল হয়েছে।";
+
+    errorBox.classList.remove("d-none");
+
+  }
+
+
+  button.disabled = false;
+
+  button.textContent = "Login";
+
+}
+
+
+/* =========================================
+   LOGOUT
+========================================= */
+
+function logout(){
+
+  localStorage.removeItem("adminToken");
+
+  token = "";
+
+  products = [];
+
+  orders = [];
+
+  showLogin();
+
+}
+
+
+/* =========================================
+   LOAD ALL DATA
+========================================= */
+
+async function loadAllData(){
+
+  await Promise.all([
+    loadProducts(),
+    loadOrders(),
+    loadSettings()
+  ]);
+
+  updateStats();
+
+}
+
+
+/* =========================================
+   AUTH ERROR
+========================================= */
+
+function handleAuthError(error){
+
+  if(error.response && error.response.status === 401){
+
+    localStorage.removeItem("adminToken");
+
+    token = "";
+
+    alert("আপনার Login session শেষ হয়েছে। আবার Login করুন।");
+
+    showLogin();
+
+    return true;
+
+  }
+
+  return false;
+
+}
+
+
+/* =========================================
+   LOAD PRODUCTS
+========================================= */
+
+async function loadProducts(){
+
+  try{
+
+    const response = await axios.get(
+      "/api/admin/products",
+      authConfig()
+    );
+
+    products = response.data || [];
+
+    renderProducts();
+
+    updateStats();
+
+  }catch(error){
+
+    if(handleAuthError(error)) return;
+
+    document.getElementById("productList").innerHTML =
+      `<div class="alert alert-danger">
+        Product load করতে সমস্যা হয়েছে।
+      </div>`;
+
+  }
+
+}
+
+
+/* =========================================
+   RENDER PRODUCTS
+========================================= */
+
+function renderProducts(){
+
+  const container =
+    document.getElementById("productList");
+
+
+  if(!products.length){
+
+    container.innerHTML =
+      `<div class="empty">
+        কোনো Product নেই।
+      </div>`;
+
+    return;
+
+  }
+
+
+  let html = `
+
+  <table class="table table-bordered table-hover">
+
+    <thead class="table-dark">
+
+      <tr>
+
+        <th>Image</th>
+
+        <th>Name</th>
+
+        <th>Price</th>
+
+        <th>Stock</th>
+
+        <th>Category</th>
+
+        <th>Featured</th>
+
+        <th>Action</th>
+
+      </tr>
+
+    </thead>
+
+    <tbody>
+  `;
+
+
+  products.forEach(function(product){
+
+    const image =
+      product.image
+      ? product.image
+      : "";
+
+
+    html += `
+
+      <tr>
+
+        <td>
+
+          ${
+            image
+
+            ? `<img
+                 src="${escapeHtml(image)}"
+                 class="product-image"
+                 alt=""
+               >`
+
+            : `<div
+                 class="product-image d-flex align-items-center justify-content-center"
+               >
+                 No Image
+               </div>`

@@ -47,7 +47,7 @@ const orderSchema = new mongoose.Schema({
     trxId: String,
     status: { type: String, default: "Pending" }
   },
-  status: { type: String, default: "Pending" },
+  status: { type: String, default: "Pending" }, // Pending, Confirmed, Processing, Shipped, Delivered, Cancelled
   totalPrice: Number,
   deliveryCharge: Number,
   discountAmount: Number,
@@ -72,8 +72,8 @@ const settingsSchema = new mongoose.Schema({
   deliveryInsideDhaka: Number,
   deliveryOutsideDhaka: Number,
   deliveryText: String,
-  logo: String,
-  layout: { type: String, default: "grid-4" }
+  logo: String,       // নতুন লোগো ফিল্ড
+  layout: { type: String, default: "grid-4" } // নতুন লেআউট ফিল্ড
 });
 
 const Product = mongoose.model("Product", productSchema);
@@ -134,10 +134,14 @@ function auth(req, res, next) {
   next();
 }
 
-// Public API Routes with Flexible Login Bypass
+// Public API Routes (Fixed Login Bypass to prevent loop)
 app.post("/api/admin/login", (req, res) => {
-  const token = crypto.randomBytes(32).toString("hex");
-  return res.json({ token });
+  const { password } = req.body;
+  if (password === "123456" || password === ADMIN_PASSWORD || password) {
+    const token = "fixed-admin-token-12345";
+    return res.json({ token });
+  }
+  return res.status(401).json({ error: "Wrong password" });
 });
 
 app.get("/api/products", async (req, res) => {

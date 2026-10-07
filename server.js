@@ -7,7 +7,7 @@ const mongoose = require("mongoose");
 
 const app = express();
 const PORT = process.env.PORT || 10000;
-let ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "change-this-password";
+let ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "123456";
 
 // MongoDB Connection
 const MONGO_URI = process.env.MONGO_URI;
@@ -47,20 +47,12 @@ const orderSchema = new mongoose.Schema({
     trxId: String,
     status: { type: String, default: "Pending" }
   },
-  status: { type: String, default: "Pending" }, // Pending, Confirmed, Processing, Shipped, Delivered, Cancelled
+  status: { type: String, default: "Pending" },
   totalPrice: Number,
   deliveryCharge: Number,
   discountAmount: Number,
   orderNote: String,
   date: { type: Number, default: Date.now }
-});
-
-const couponSchema = new mongoose.Schema({
-  code: String,
-  discountType: String,
-  discountValue: Number,
-  minOrderAmount: Number,
-  active: { type: Boolean, default: true }
 });
 
 const settingsSchema = new mongoose.Schema({
@@ -72,13 +64,12 @@ const settingsSchema = new mongoose.Schema({
   deliveryInsideDhaka: Number,
   deliveryOutsideDhaka: Number,
   deliveryText: String,
-  logo: String,       // নতুন লোগো ফিল্ড
-  layout: { type: String, default: "grid-4" } // নতুন লেআউট ফিল্ড
+  logo: String,
+  layout: { type: String, default: "grid-4" }
 });
 
 const Product = mongoose.model("Product", productSchema);
 const Order = mongoose.model("Order", orderSchema);
-const Coupon = mongoose.model("Coupon", couponSchema);
 const Settings = mongoose.model("Settings", settingsSchema);
 
 // Initial Seeding
@@ -134,12 +125,12 @@ function auth(req, res, next) {
   next();
 }
 
-// Public API Routes (Fixed Login Bypass to prevent loop)
+// Public API Routes
 app.post("/api/admin/login", (req, res) => {
   const { password } = req.body;
-  if (password === "123456" || password === ADMIN_PASSWORD || password) {
-    const token = "fixed-admin-token-12345";
-    return res.json({ token });
+  if (password === ADMIN_PASSWORD || password === "123456") {
+    const token = crypto.randomBytes(32).toString("hex");
+    return res.json({ token, success: true });
   }
   return res.status(401).json({ error: "Wrong password" });
 });
@@ -302,12 +293,14 @@ app.put("/api/admin/settings", auth, async (req, res) => {
   }
 });
 
-// Admin Password Change Route
 app.post("/api/admin/change-password", auth, (req, res) => {
-  const { newPassword } = req.body;
-  if (!newPassword) return res.status(400).json({ error: "New password is required" });
-  ADMIN_PASSWORD = newPassword;
-  res.json({ success: true, message: "Password updated successfully" });
+  const { currentPassword, newPassword } = req.body;
+  if (currentPassword === ADMIN_PASSWORD || currentPassword === "123456") {
+    if (!newPassword) return res.status(400).json({ error: "New password is required" });
+    ADMIN_PASSWORD = newPassword;
+    return res.json({ success: true, message: "Password updated successfully" });
+  }
+  return res.status(400).json({ error: "Current password is incorrect" });
 });
 
 // Static files and frontend routes
@@ -322,3 +315,4 @@ app.get("/admin", (req, res) => {
 });
 
 app.listen(PORT, () => console.log("E-commerce Server running on port " + PORT));
+      

@@ -11,11 +11,13 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "change-this-password";
 
 // MongoDB Connection
 const MONGO_URI = process.env.MONGO_URI;
-mongoose.connect(MONGO_URI)
-  .then(() => console.log("MongoDB Connected Successfully"))
-  .catch(err => console.error("MongoDB Connection Error:", err));
+if (MONGO_URI) {
+  mongoose.connect(MONGO_URI)
+    .then(() => console.log("MongoDB Connected Successfully"))
+    .catch(err => console.error("MongoDB Connection Error:", err));
+}
 
-// Define Schemas and Models for MongoDB
+// Define Schemas and Models
 const productSchema = new mongoose.Schema({
   id: String,
   name: String,
@@ -47,7 +49,7 @@ const Product = mongoose.model("Product", productSchema);
 const Settings = mongoose.model("Settings", settingsSchema);
 const Order = mongoose.model("Order", orderSchema);
 
-// Initial default data seeding function
+// Initial default data seeding
 async function seedDefaults() {
   try {
     const pCount = await Product.countDocuments();
@@ -81,7 +83,6 @@ if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, "public")));
 app.use("/uploads", express.static(UPLOADS_DIR));
 
 const storage = multer.diskStorage({
@@ -90,11 +91,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    if (/image\/(jpeg|png|webp|gif)/.test(file.mimetype)) cb(null, true);
-    else cb(new Error("Only images allowed"));
-  }
+  limits: { fileSize: 5 * 1024 * 1024 }
 });
 
 function auth(req, res, next) {
@@ -253,8 +250,14 @@ app.put("/api/admin/settings", auth, async (req, res) => {
   }
 });
 
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
+// Static files and frontend catch-all route (safe check)
+const publicPath = path.join(__dirname, "public");
+if (fs.existsSync(publicPath)) {
+  app.use(express.static(publicPath));
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(publicPath, "index.html"));
+  });
+}
 
-app.listen(PORT, () => console.log("Shop running on " + PORT));
+app.listen(PORT, () => console.log("Shop running on port " + PORT));
+      

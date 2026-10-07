@@ -1,12 +1,344 @@
-<!doctype html><html lang="bn"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Admin Panel</title><style>body{font-family:Arial;margin:0;background:#f5f5f5}.top{background:#111;color:#fff;padding:16px}.wrap{max-width:1150px;margin:auto;padding:18px}.panel,.card{background:#fff;padding:16px;border-radius:12px;margin:12px 0}input,textarea,select{width:100%;padding:10px;margin:6px 0 12px;box-sizing:border-box}button{padding:10px 15px;border:0;border-radius:7px;background:#111;color:#fff;cursor:pointer}.gold{background:#c9a227;color:#111}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:15px}.thumb{width:100%;height:160px;object-fit:contain;background:#eee;border-radius:8px}.order{border-left:5px solid #c9a227}.row{display:flex;gap:8px}.row>*{flex:1}</style></head><body><div class="top"><h2>Accessories Adda Hub — Admin Panel</h2></div><div class="wrap">
-<div id="login" class="panel"><h3>Admin Login</h3><input id="pass" type="password" placeholder="Admin password"><button onclick="login()">Login</button></div>
-<div id="app" style="display:none"><div class="panel"><button onclick="logout()">Logout</button></div>
-<div class="panel"><h3>Store & Payment Settings</h3><input id="tag" placeholder="Tagline"><textarea id="del" placeholder="Delivery text"></textarea><input id="wa" placeholder="WhatsApp"><input id="bk" placeholder="bKash Merchant/Payment Number"><input id="ng" placeholder="Nagad Merchant/Payment Number"><button class="gold" onclick="saveSettings()">Save Settings</button></div>
-<div class="panel"><h3>New Product</h3><input id="nn" placeholder="Product name"><input id="np" type="number" placeholder="Price"><textarea id="nd" placeholder="Description"></textarea><input id="ni" type="file" accept="image/*"><button class="gold" onclick="addProduct()">Add Product</button></div>
-<h3>Products</h3><div id="plist" class="grid"></div><h3>Orders</h3><div id="olist"></div></div></div>
-<script>let token=localStorage.adminToken||"";async function api(u,o={}){o.headers={...(o.headers||{}),"x-admin-token":token};let r=await fetch(u,o);if(r.status===401){logout();throw Error("Unauthorized")}return r}async function login(){let r=await fetch("/api/admin/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:pass.value})}),d=await r.json();if(!r.ok)return alert("Wrong password");token=d.token;localStorage.adminToken=token;show()}function logout(){localStorage.removeItem("adminToken");location.reload()}async function show(){login.style.display="none";app.style.display="block";let s=await fetch("/api/settings").then(r=>r.json());tag.value=s.tagline;del.value=s.deliveryText;wa.value=s.whatsapp;bk.value=s.bkash;ng.value=s.nagad;loadP();loadO()}async function saveSettings(){await api("/api/admin/settings",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({tagline:tag.value,deliveryText:del.value,whatsapp:wa.value,bkash:bk.value,nagad:ng.value})});alert("Settings saved")}async function upload(f){let x=new FormData();x.append("image",f);return (await(await api("/api/admin/upload",{method:"POST",body:x})).json()).url}
-async function loadP(){let a=await api("/api/admin/products").then(r=>r.json());plist.innerHTML=a.map(p=>`<div class="card"><img class="thumb" src="${p.image||""}"><input id="n${p.id}" value="${esc(p.name)}"><input id="p${p.id}" type="number" value="${p.price}"><textarea id="d${p.id}">${esc(p.description)}</textarea><input id="i${p.id}" type="file" accept="image/*"><label><input id="s${p.id}" type="checkbox" ${p.stock?"checked":""}> Available</label><button class="gold" onclick="saveP('${p.id}')">Save</button> <button onclick="delP('${p.id}')">Delete</button></div>`).join("")}
-async function saveP(id){let f=document.getElementById("i"+id).files[0],body={name:document.getElementById("n"+id).value,price:document.getElementById("p"+id).value,description:document.getElementById("d"+id).value,stock:document.getElementById("s"+id).checked};if(f)body.image=await upload(f);await api("/api/admin/products/"+id,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});loadP()}
-async function addProduct(){let u=ni.files[0]?await upload(ni.files[0]):"";await api("/api/admin/products",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:nn.value,price:np.value,description:nd.value,image:u})});nn.value=np.value=nd.value="";ni.value="";loadP()}
-async function delP(id){if(confirm("Delete product?")){await api("/api/admin/products/"+id,{method:"DELETE"});loadP()}}
-async function loadO(){let a=await api("/api/admin/orders").then(r=>r.json());olist.innerHTML=a.length?a.map(o=>`<div class="card order"><b>${o.id}</b> — ${new Date(o.createdAt).toLocaleString()}<p><b>${esc(o.customer.name)}</b> | ${esc(o.customer.phone)}<br>${esc(o.customer.address)}<br>Total: ৳${o.total}<br>Payment: ${o.payment.method.toUpperCase()} ${o.payment.transactionId?"| TxID: "+esc(o.payment.transactionId):""}</p><div class="row"><select onchange="status('${o.id}',this.value)">${["Pending","Confirmed","Processing","Shipped","Delivered","Cancelled"].map(x=>`<option ${x===o.status?"selected":""}>${x}</option>`).join("")}</select>${o.payment.method!=="cod"?`<select onchange="pay('${o.id}',this.value)">${["Pending","Verified","Rejected"].map(x=>`<option ${x===o.payment.status?"selected":""}>${x}</option>`).join("")}</select>`:""}</div></div>`).join(""):"No orders"}async function status(id,s){await api("/api/admin/orders/"+id,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({status:s})});loadO()}async function pay(id,s){await api("/api/admin/orders/"+id+"/payment",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({status:s})});loadO()}function esc(x){return String(x??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}if(token)show();</script></body></html>
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>প্রিমিয়াম অ্যাডমিন প্যানেল</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .sidebar { min-height: 100vh; background: #343a40; color: white; padding-top: 20px; }
+        .sidebar a { color: #cfd4da; text-decoration: none; display: block; padding: 12px 20px; border-radius: 4px; margin-bottom: 5px; }
+        .sidebar a:hover, .sidebar a.active { background: #0d6efd; color: white; }
+        .card { border: none; box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075); margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+    <!-- Login Section -->
+    <div id="loginSection" class="container mt-5" style="max-width: 400px;">
+        <div class="card p-4 shadow-sm">
+            <h3 class="text-center mb-3">অ্যাডমিন লগইন</h3>
+            <div class="mb-3">
+                <label class="form-label">পাসওয়ার্ড</label>
+                <input type="password" id="adminPass" class="form-control" placeholder="পাসওয়ার্ড লিখুন">
+            </div>
+            <button onclick="loginAdmin()" class="btn btn-primary w-100">লগইন করুন</button>
+            <div id="loginError" class="text-danger mt-2 text-center"></div>
+        </div>
+    </div>
+
+    <!-- Dashboard Section -->
+    <div id="dashboardSection" class="container-fluid" style="display: none;">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-2 sidebar d-none d-md-block">
+                <h4 class="text-center mb-4">অ্যাডমিন প্যানেল</h4>
+                <a href="#" onclick="switchTab('products')" class="active" id="nav-products">📦 পণ্য ম্যানেজমেন্ট</a>
+                <a href="#" onclick="switchTab('orders')" id="nav-orders">🛒 অর্ডার ম্যানেজমেন্ট</a>
+                <a href="#" onclick="switchTab('settings')" id="nav-settings">⚙️ সেটিংস</a>
+                <a href="#" onclick="logout()" class="text-danger mt-5">🚪 লগআউট</a>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-md-10 ms-sm-auto px-md-4 py-4">
+                
+                <!-- Products Tab -->
+                <div id="tab-products" class="content-tab">
+                    <h2 class="mb-4">পণ্য তালিকা ও নতুন পণ্য যোগ</h2>
+                    
+                    <div class="card p-3 mb-4">
+                        <h5>নতুন পণ্য যোগ করুন</h5>
+                        <form id="productForm" onsubmit="saveProduct(event)">
+                            <input type="hidden" id="editProductId">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <input type="text" id="pName" class="form-control" placeholder="পণ্যের নাম" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="number" id="pPrice" class="form-control" placeholder="মূল্য (৳)" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="number" id="pStock" class="form-control" placeholder="স্টক পরিমাণ" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <input type="text" id="pCategory" class="form-control" placeholder="ক্যাটাগরি">
+                                </div>
+                                <div class="col-md-6">
+                                    <input type="text" id="pImage" class="form-control" placeholder="ছবির লিংক বা আপলোড করুন">
+                                </div>
+                                <div class="col-md-6">
+                                    <input type="file" id="pImageFile" class="form-control" onchange="uploadImage(this)">
+                                </div>
+                                <div class="col-md-12">
+                                    <textarea id="pDesc" class="form-control" placeholder="পণ্যের বিবরণ..."></textarea>
+                                </div>
+                                <div class="col-md-12">
+                                    <button type="submit" class="btn btn-success" id="saveProductBtn">পণ্য সংরক্ষণ করুন</button>
+                                    <button type="button" class="btn btn-secondary ms-2" onclick="resetProductForm()">রিসেট</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="card p-3">
+                        <h5>সকল পণ্যের তালিকা</h5>
+                        <div class="table-responsive">
+                            <table class="table table-striped align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>নাম</th>
+                                        <th>মূল্য</th>
+                                        <th>স্টক</th>
+                                        <th>ক্যাটাগরি</th>
+                                        <th>কার্যক্রম</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="productList"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Orders Tab -->
+                <div id="tab-orders" class="content-tab" style="display: none;">
+                    <h2 class="mb-4">অর্ডার ম্যানেজমেন্ট</h2>
+                    <div class="card p-3">
+                        <div class="table-responsive">
+                            <table class="table table-bordered align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>অর্ডার আইডি</th>
+                                        <th>গ্রাহকের বিবরণ</th>
+                                        <th>পণ্যসমূহ</th>
+                                        <th>মোট টাকা</th>
+                                        <th>স্ট্যাটাস</th>
+                                        <th>পদক্ষেপ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="orderList"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Tab -->
+                <div id="tab-settings" class="content-tab" style="display: none;">
+                    <h2 class="mb-4">ওয়েবসাইট সেটিংস</h2>
+                    <div class="card p-4" style="max-width: 600px;">
+                        <form onsubmit="saveSettings(event)">
+                            <div class="mb-3">
+                                <label class="form-label">দোকানের নাম</label>
+                                <input type="text" id="sName" class="form-control">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">ট্যাগলাইন</label>
+                                <input type="text" id="sTag" class="form-control">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">হোয়াটসঅ্যাপ নম্বর</label>
+                                <input type="text" id="sWhatsapp" class="form-control">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">বিকাশ নম্বর</label>
+                                <input type="text" id="sBkash" class="form-control">
+                            </div>
+                            <button type="submit" class="btn btn-primary">সেটিংস সেভ করুন</button>
+                        </form>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let token = localStorage.getItem("adminToken") || "";
+
+        if (token) {
+            document.getElementById("loginSection").style.display = "none";
+            document.getElementById("dashboardSection").style.display = "block";
+            loadAllData();
+        }
+
+        async function loginAdmin() {
+            const password = document.getElementById("adminPass").value;
+            try {
+                const res = await axios.post("/api/admin/login", { password });
+                token = res.data.token;
+                localStorage.setItem("adminToken", token);
+                document.getElementById("loginSection").style.display = "none";
+                document.getElementById("dashboardSection").style.display = "block";
+                loadAllData();
+            } catch (err) {
+                document.getElementById("loginError").innerText = "ভুল পাসওয়ার্ড! আবার চেষ্টা করুন।";
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem("adminToken");
+            location.reload();
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.content-tab').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.sidebar a').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-' + tabName).style.display = 'block';
+            document.getElementById('nav-' + tabName).classList.add('active');
+        }
+
+        async function loadAllData() {
+            loadProducts();
+            loadOrders();
+            loadSettings();
+        }
+
+        async function loadProducts() {
+            try {
+                const res = await axios.get("/api/admin/products", { headers: { "x-admin-token": token } });
+                const tbody = document.getElementById("productList");
+                tbody.innerHTML = "";
+                res.data.forEach(p => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${p.name}</td>
+                            <td>৳${p.price}</td>
+                            <td>${p.stock} টি</td>
+                            <td>${p.category || 'General'}</td>
+                            <td>
+                                <button class="btn btn-sm btn-primary me-1" onclick='editProduct(${JSON.stringify(p)})'>এডিট</button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteProduct('${p.id}')">ডিলিট</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } catch (err) { console.error(err); }
+        }
+
+        async function uploadImage(input) {
+            if (!input.files[0]) return;
+            const formData = new FormData();
+            formData.append("image", input.files[0]);
+            try {
+                const res = await axios.post("/api/admin/upload", formData, {
+                    headers: { "x-admin-token": token, "Content-Type": "multipart/form-data" }
+                });
+                document.getElementById("pImage").value = res.data.url;
+                alert("ছবি সফলভাবে আপলোড হয়েছে!");
+            } catch (err) { alert("ছবি আপলোড ব্যর্থ হয়েছে।"); }
+        }
+
+        async function saveProduct(e) {
+            e.preventDefault();
+            const id = document.getElementById("editProductId").value;
+            const productData = {
+                name: document.getElementById("pName").value,
+                price: document.getElementById("pPrice").value,
+                stock: document.getElementById("pStock").value,
+                category: document.getElementById("pCategory").value,
+                image: document.getElementById("pImage").value,
+                description: document.getElementById("pDesc").value
+            };
+
+            try {
+                if (id) {
+                    await axios.put(`/api/admin/products/${id}`, productData, { headers: { "x-admin-token": token } });
+                } else {
+                    await axios.post("/api/admin/products", productData, { headers: { "x-admin-token": token } });
+                }
+                resetProductForm();
+                loadProducts();
+                alert("পণ্য সফলভাবে সংরক্ষিত হয়েছে!");
+            } catch (err) { alert("সংরক্ষণ করতে সমস্যা হয়েছে।"); }
+        }
+
+        function editProduct(p) {
+            document.getElementById("editProductId").value = p.id;
+            document.getElementById("pName").value = p.name;
+            document.getElementById("pPrice").value = p.price;
+            document.getElementById("pStock").value = p.stock || 0;
+            document.getElementById("pCategory").value = p.category || "";
+            document.getElementById("pImage").value = p.image || "";
+            document.getElementById("pDesc").value = p.description || "";
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function resetProductForm() {
+            document.getElementById("productForm").reset();
+            document.getElementById("editProductId").value = "";
+        }
+
+        async function deleteProduct(id) {
+            if (!confirm("আপনি কি নিশ্চিত পণ্যটি ডিলিট করতে চান?")) return;
+            try {
+                await axios.delete(`/api/admin/products/${id}`, { headers: { "x-admin-token": token } });
+                loadProducts();
+            } catch (err) { alert("ডিলিট করতে সমস্যা হয়েছে।"); }
+        }
+
+        async function loadOrders() {
+            try {
+                const res = await axios.get("/api/admin/orders", { headers: { "x-admin-token": token } });
+                const tbody = document.getElementById("orderList");
+                tbody.innerHTML = "";
+                res.data.forEach(o => {
+                    let itemsHtml = o.items.map(i => `${i.name} (${i.quantity}x)`).join(", ");
+                    tbody.innerHTML += `
+                        <tr>
+                            <td><b>${o.id}</b></td>
+                            <td>${o.customer.name}<br>${o.customer.phone}<br>${o.customer.address}</td>
+                            <td>${itemsHtml}</td>
+                            <td>৳${o.totalPrice || 0}</td>
+                            <td>
+                                <select class="form-select form-select-sm" onchange="updateOrderStatus('${o.id}', this.value)">
+                                    <option ${o.status === 'Pending' ? 'selected' : ''}>Pending</option>
+                                    <option ${o.status === 'Confirmed' ? 'selected' : ''}>Confirmed</option>
+                                    <option ${o.status === 'Processing' ? 'selected' : ''}>Processing</option>
+                                    <option ${o.status === 'Shipped' ? 'selected' : ''}>Shipped</option>
+                                    <option ${o.status === 'Delivered' ? 'selected' : ''}>Delivered</option>
+                                    <option ${o.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+                                </select>
+                            </td>
+                            <td><span class="badge bg-secondary">${o.status}</span></td>
+                        </tr>
+                    `;
+                });
+            } catch (err) { console.error(err); }
+        }
+
+        async function updateOrderStatus(orderId, status) {
+            try {
+                await axios.put(`/api/admin/orders/${orderId}/status`, { status }, { headers: { "x-admin-token": token } });
+                loadOrders();
+            } catch (err) { alert("স্ট্যাটাস আপডেট ব্যর্থ হয়েছে।"); }
+        }
+
+        async function loadSettings() {
+            try {
+                const res = await axios.get("/api/settings");
+                if (res.data) {
+                    document.getElementById("sName").value = res.data.storeName || "";
+                    document.getElementById("sTag").value = res.data.tagLine || "";
+                    document.getElementById("sWhatsapp").value = res.data.whatsapp || "";
+                    document.getElementById("sBkash").value = res.data.bkash || "";
+                }
+            } catch (err) { console.error(err); }
+        }
+
+        async function saveSettings(e) {
+            e.preventDefault();
+            const data = {
+                storeName: document.getElementById("sName").value,
+                tagLine: document.getElementById("sTag").value,
+                whatsapp: document.getElementById("sWhatsapp").value,
+                bkash: document.getElementById("sBkash").value
+            };
+            try {
+                await axios.put("/api/admin/settings", data, { headers: { "x-admin-token": token } });
+                alert("সেটিংস সফলভাবে আপডেট হয়েছে!");
+            } catch (err) { alert("সেটিংস আপডেট ব্যর্থ হয়েছে।"); }
+        }
+    </script>
+</body>
+</html>

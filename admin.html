@@ -37,7 +37,7 @@
                 <h4 class="text-center mb-4">অ্যাডমিন প্যানেল</h4>
                 <a href="#" onclick="switchTab('products')" class="active" id="nav-products">📦 পণ্য ম্যানেজমেন্ট</a>
                 <a href="#" onclick="switchTab('orders')" id="nav-orders">🛒 অর্ডার ম্যানেজমেন্ট</a>
-                <a href="#" onclick="switchTab('settings')" id="nav-settings">⚙️ সেটিংস</a>
+                <a href="#" onclick="switchTab('settings')" id="nav-settings">⚙️ সেটিংস ও ডিজাইন</a>
                 <a href="#" onclick="logout()" class="text-danger mt-5">🚪 লগআউট</a>
             </div>
 
@@ -49,7 +49,7 @@
                     <h2 class="mb-4">পণ্য তালিকা ও নতুন পণ্য যোগ</h2>
                     
                     <div class="card p-3 mb-4">
-                        <h5>নতুন পণ্য যোগ করুন</h5>
+                        <h5>নতুন পণ্য যোগ করুন / এডিট করুন</h5>
                         <form id="productForm" onsubmit="saveProduct(event)">
                             <input type="hidden" id="editProductId">
                             <div class="row g-3">
@@ -66,7 +66,7 @@
                                     <input type="text" id="pCategory" class="form-control" placeholder="ক্যাটাগরি">
                                 </div>
                                 <div class="col-md-6">
-                                    <input type="text" id="pImage" class="form-control" placeholder="ছবির লিংক বা আপলোড করুন">
+                                    <input type="text" id="pImage" class="form-control" placeholder="ছবির লিংক">
                                 </div>
                                 <div class="col-md-6">
                                     <input type="file" id="pImageFile" class="form-control" onchange="uploadImage(this)">
@@ -113,8 +113,8 @@
                                         <th>গ্রাহকের বিবরণ</th>
                                         <th>পণ্যসমূহ</th>
                                         <th>মোট টাকা</th>
-                                        <th>স্ট্যাটাস</th>
-                                        <th>পদক্ষেপ</th>
+                                        <th>স্ট্যাটাস পরিবর্তন</th>
+                                        <th>বর্তমান স্ট্যাটাস</th>
                                     </tr>
                                 </thead>
                                 <tbody id="orderList"></tbody>
@@ -123,10 +123,10 @@
                     </div>
                 </div>
 
-                <!-- Settings Tab -->
+                <!-- Settings & Customization Tab -->
                 <div id="tab-settings" class="content-tab" style="display: none;">
-                    <h2 class="mb-4">ওয়েবসাইট সেটিংস</h2>
-                    <div class="card p-4" style="max-width: 600px;">
+                    <h2 class="mb-4">ওয়েবসাইট সেটিংস, লোগো ও লেআউট কন্ট্রোল</h2>
+                    <div class="card p-4" style="max-width: 650px;">
                         <form onsubmit="saveSettings(event)">
                             <div class="mb-3">
                                 <label class="form-label">দোকানের নাম</label>
@@ -144,7 +144,35 @@
                                 <label class="form-label">বিকাশ নম্বর</label>
                                 <input type="text" id="sBkash" class="form-control">
                             </div>
-                            <button type="submit" class="btn btn-primary">সেটিংস সেভ করুন</button>
+                            <hr class="my-4">
+                            <h5>🎨 ডিজাইন ও লেআউট ম্যানেজমেন্ট</h5>
+                            <div class="mb-3">
+                                <label class="form-label">ওয়েবসাইট লোগো লিংক (অথবা ছবি আপলোড করে লিংক বসান)</label>
+                                <input type="text" id="sLogo" class="form-control" placeholder="লোগোর ইমেজ লিংক">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">হোমপেজে পণ্য প্রদর্শনের লেআউট (Grid View)</label>
+                                <select id="sLayout" class="form-select">
+                                    <option value="grid-4">একসাথে ৪টি পণ্য (4 Columns Grid - ডিফল্ট)</option>
+                                    <option value="grid-3">একসাথে ৩টি পণ্য (3 Columns Grid)</option>
+                                    <option value="grid-1">একসাথে ১টি পণ্য (Single List View)</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary">সেটিংস ও লেআউট সেভ করুন</button>
+                        </form>
+
+                        <hr class="my-4">
+                        <h5>🔐 অ্যাডমিন পাসওয়ার্ড পরিবর্তন</h5>
+                        <form onsubmit="changePassword(event)">
+                            <div class="mb-3">
+                                <label class="form-label">বর্তমান পাসওয়ার্ড</label>
+                                <input type="password" id="currPass" class="form-control" placeholder="বর্তমান পাসওয়ার্ড দিন" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">নতুন পাসওয়ার্ড</label>
+                                <input type="password" id="newPass" class="form-control" placeholder="নতুন পাসওয়ার্ড দিন" required>
+                            </div>
+                            <button type="submit" class="btn btn-warning">পাসওয়ার্ড পরিবর্তন করুন</button>
                         </form>
                     </div>
                 </div>
@@ -322,6 +350,8 @@
                     document.getElementById("sTag").value = res.data.tagLine || "";
                     document.getElementById("sWhatsapp").value = res.data.whatsapp || "";
                     document.getElementById("sBkash").value = res.data.bkash || "";
+                    document.getElementById("sLogo").value = res.data.logo || "";
+                    document.getElementById("sLayout").value = res.data.layout || "grid-4";
                 }
             } catch (err) { console.error(err); }
         }
@@ -332,13 +362,22 @@
                 storeName: document.getElementById("sName").value,
                 tagLine: document.getElementById("sTag").value,
                 whatsapp: document.getElementById("sWhatsapp").value,
-                bkash: document.getElementById("sBkash").value
+                bkash: document.getElementById("sBkash").value,
+                logo: document.getElementById("sLogo").value,
+                layout: document.getElementById("sLayout").value
             };
             try {
                 await axios.put("/api/admin/settings", data, { headers: { "x-admin-token": token } });
-                alert("সেটিংস সফলভাবে আপডেট হয়েছে!");
+                alert("সেটিংস ও লেআউট সফলভাবে আপডেট হয়েছে!");
             } catch (err) { alert("সেটিংস আপডেট ব্যর্থ হয়েছে।"); }
         }
-    </script>
-</body>
-</html>
+
+        async function changePassword(e) {
+            e.preventDefault();
+            const currentPassword = document.getElementById("currPass").value;
+            const newPassword = document.getElementById("newPass").value;
+            try {
+                const res = await axios.post("/api/admin/change-password", { currentPassword, newPassword }, { headers: { "x-admin-token": token } });
+                alert(res.data.message || "পাসওয়ার্ড সফলভাবে পরিবর্তন হয়েছে!");
+                document.getElementById("currPass").value = "";
+        

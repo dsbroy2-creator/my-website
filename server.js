@@ -1,30 +1,260 @@
-const express=require("express"),fs=require("fs"),path=require("path"),multer=require("multer"),crypto=require("crypto");
-const app=express(),PORT=process.env.PORT||3000,ADMIN_PASSWORD=process.env.ADMIN_PASSWORD||"change-this-password";
-const DATA=path.join(__dirname,"data"),DB=path.join(DATA,"db.json"),UP=path.join(__dirname,"uploads");
-fs.mkdirSync(DATA,{recursive:true});fs.mkdirSync(UP,{recursive:true});
-if(!fs.existsSync(DB))fs.writeFileSync(DB,JSON.stringify({products:[
-{id:"p1",name:"Sunglass",price:0,description:"আপনার পণ্যের description এখানে লিখুন।",image:"",stock:true},
-{id:"p2",name:"Wallet / Money Bag",price:0,description:"আপনার পণ্যের description এখানে লিখুন।",image:"",stock:true},
-{id:"p3",name:"Premium Black Watch",price:400,description:"Premium quality stylish watch.",image:"watch.jpg",stock:true}],
-orders:[],settings:{storeName:"Accessories Adda Hub",tagline:"Style starts with the right accessories.",
-deliveryText:"সারা বাংলাদেশে ডেলিভারি। অর্ডারের আগে ডেলিভারি চার্জ ও সময় নিশ্চিত করুন।",
-whatsapp:"01870697907",bkash:"",nagad:"",currency:"৳"}},null,2));
-const read=()=>JSON.parse(fs.readFileSync(DB));const write=x=>fs.writeFileSync(DB,JSON.stringify(x,null,2));
-app.use(express.json({limit:"2mb"}));app.use(express.urlencoded({extended:true}));app.use("/uploads",express.static(UP));app.use(express.static(path.join(__dirname,"public")));
-const storage=multer.diskStorage({destination:(q,f,c)=>c(null,UP),filename:(q,f,c)=>c(null,Date.now()+"-"+crypto.randomBytes(4).toString("hex")+path.extname(f.originalname).toLowerCase())});
-const upload=multer({storage,limits:{fileSize:5*1024*1024},fileFilter:(q,f,c)=>/^image\/(jpeg|png|webp|gif)$/.test(f.mimetype)?c(null,true):c(new Error("Image only"))});
-function auth(q,r,n){if(!q.headers["x-admin-token"]||q.headers["x-admin-token"]!==process.env.ADMIN_TOKEN_VALUE)return r.status(401).json({error:"Unauthorized"});n()}
-app.post("/api/admin/login",(q,r)=>{if(q.body.password!==ADMIN_PASSWORD)return r.status(401).json({error:"Wrong password"});let t=crypto.randomBytes(32).toString("hex");process.env.ADMIN_TOKEN_VALUE=t;r.json({token:t})});
-app.get("/api/products",(q,r)=>r.json(read().products.filter(p=>p.stock)));
-app.get("/api/settings",(q,r)=>r.json(read().settings));
-app.get("/api/admin/products",auth,(q,r)=>r.json(read().products));app.get("/api/admin/orders",auth,(q,r)=>r.json(read().orders));
-app.post("/api/admin/upload",auth,upload.single("image"),(q,r)=>r.json({url:"/uploads/"+q.file.filename}));
-app.post("/api/admin/products",auth,(q,r)=>{let d=read(),p={id:"p_"+Date.now(),name:q.body.name||"New Product",price:+q.body.price||0,description:q.body.description||"",image:q.body.image||"",stock:q.body.stock!=="false"};d.products.push(p);write(d);r.json(p)});
-app.put("/api/admin/products/:id",auth,(q,r)=>{let d=read(),p=d.products.find(x=>x.id===q.params.id);if(!p)return r.status(404).json({error:"Not found"});Object.assign(p,{name:q.body.name??p.name,price:+(q.body.price??p.price),description:q.body.description??p.description,image:q.body.image??p.image,stock:q.body.stock===undefined?p.stock:(q.body.stock===true||q.body.stock==="true")});write(d);r.json(p)});
-app.delete("/api/admin/products/:id",auth,(q,r)=>{let d=read();d.products=d.products.filter(x=>x.id!==q.params.id);write(d);r.json({ok:true})});
-app.post("/api/orders",(q,r)=>{let {customer,items,payment}=q.body;if(!customer?.name||!customer?.phone||!customer?.address||!Array.isArray(items)||!items.length)return r.status(400).json({error:"Missing order information"});if(!["cod","bkash","nagad"].includes(payment?.method))return r.status(400).json({error:"Invalid payment method"});let d=read(),valid=[],total=0;for(let i of items){let p=d.products.find(x=>x.id===i.id&&x.stock);if(!p)continue;let qty=Math.max(1,Math.min(99,+i.qty||1));valid.push({id:p.id,name:p.name,price:p.price,qty});total+=p.price*qty}if(!valid.length)return r.status(400).json({error:"No valid products"});if(payment.method!=="cod"&&!payment.transactionId)return r.status(400).json({error:"Transaction ID required"});let o={id:"AAH-"+new Date().toISOString().slice(0,10).replaceAll("-","")+String(d.orders.length+1).padStart(3,"0"),createdAt:new Date().toISOString(),customer,items:valid,total,payment:{method:payment.method,transactionId:payment.transactionId||"",status:payment.method==="cod"?"Not applicable":"Pending"},status:"Pending"};d.orders.unshift(o);write(d);r.json(o)});
-app.put("/api/admin/orders/:id",auth,(q,r)=>{let d=read(),o=d.orders.find(x=>x.id===q.params.id);if(!o)return r.status(404).json({error:"Not found"});let s=["Pending","Confirmed","Processing","Shipped","Delivered","Cancelled"];if(!s.includes(q.body.status))return r.status(400).json({error:"Invalid status"});o.status=q.body.status;write(d);r.json(o)});
-app.put("/api/admin/orders/:id/payment",auth,(q,r)=>{let d=read(),o=d.orders.find(x=>x.id===q.params.id);if(!o)return r.status(404).json({error:"Not found"});if(!["Pending","Verified","Rejected"].includes(q.body.status))return r.status(400).json({error:"Invalid payment status"});o.payment.status=q.body.status;write(d);r.json(o)});
-app.put("/api/admin/settings",auth,(q,r)=>{let d=read();d.settings={...d.settings,...q.body};write(d);r.json(d.settings)});
-app.get("*",(q,r)=>r.sendFile(path.join(__dirname,"public","index.html")));
-app.listen(PORT,()=>console.log("Shop running on "+PORT));
+const express = require("express");
+const fs = require("fs");
+const path = require("path");
+const multer = require("multer");
+const crypto = require("crypto");
+const mongoose = require("mongoose");
+
+const app = express();
+const PORT = process.env.PORT || 10000;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "change-this-password";
+
+// MongoDB Connection
+const MONGO_URI = process.env.MONGO_URI;
+mongoose.connect(MONGO_URI)
+  .then(() => console.log("MongoDB Connected Successfully"))
+  .catch(err => console.error("MongoDB Connection Error:", err));
+
+// Define Schemas and Models for MongoDB
+const productSchema = new mongoose.Schema({
+  id: String,
+  name: String,
+  price: Number,
+  description: String,
+  image: String,
+  stock: Boolean
+});
+
+const settingsSchema = new mongoose.Schema({
+  storeName: String,
+  tagLine: String,
+  whatsapp: String,
+  bkash: String,
+  currency: String,
+  deliveryText: String
+});
+
+const orderSchema = new mongoose.Schema({
+  id: String,
+  customer: Object,
+  items: Array,
+  payment: Object,
+  status: String,
+  date: Number
+});
+
+const Product = mongoose.model("Product", productSchema);
+const Settings = mongoose.model("Settings", settingsSchema);
+const Order = mongoose.model("Order", orderSchema);
+
+// Initial default data seeding function
+async function seedDefaults() {
+  try {
+    const pCount = await Product.countDocuments();
+    if (pCount === 0) {
+      await Product.insertMany([
+        { id: "p1", name: "Sunglasses", price: 0, description: "অসাধারণ পণ্যের description এখানে লিখুন", image: "", stock: true },
+        { id: "p2", name: "Wallet / Money Bag", price: 0, description: "অসাধারণ পণ্যের description এখানে লিখুন", image: "", stock: true },
+        { id: "p3", name: "Premium Black Watch", price: 400, description: "Premium quality stylish watch.", image: "watch.jpg", stock: true }
+      ]);
+    }
+
+    const sCount = await Settings.countDocuments();
+    if (sCount === 0) {
+      await Settings.create({
+        storeName: "Accessories Adda Hub",
+        tagLine: "Style starts with the right accessories.",
+        whatsapp: "01870697987",
+        bkash: "০১৮৭০৬৯৭৯৮৭",
+        currency: "৳",
+        deliveryText: "সারা বাংলাদেশে ডেলিভারি সুবিধা ও ক্যাশ অন ডেলিভারি সিস্টেম।"
+      });
+    }
+  } catch (err) {
+    console.error("Seeding error:", err);
+  }
+}
+seedDefaults();
+
+const UPLOADS_DIR = path.join(__dirname, "uploads");
+if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+
+app.use(express.json({ limit: "2mb" }));
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, "public")));
+app.use("/uploads", express.static(UPLOADS_DIR));
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, UPLOADS_DIR),
+  filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname)
+});
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (/image\/(jpeg|png|webp|gif)/.test(file.mimetype)) cb(null, true);
+    else cb(new Error("Only images allowed"));
+  }
+});
+
+function auth(req, res, next) {
+  const token = req.headers["x-admin-token"] || req.headers["x-admin-value"];
+  if (token !== process.env.ADMIN_TOKEN_VALUE && token !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: "Wrong password" });
+  }
+  next();
+}
+
+// API Routes
+app.post("/api/admin/login", (req, res) => {
+  if (req.body.password === ADMIN_PASSWORD) {
+    const token = crypto.randomBytes(32).toString("hex");
+    return res.json({ token });
+  }
+  return res.status(401).json({ error: "Wrong password" });
+});
+
+app.get("/api/products", async (req, res) => {
+  try {
+    const products = await Product.find({});
+    res.json(products);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/admin/products", auth, async (req, res) => {
+  try {
+    const products = await Product.find({});
+    res.json(products);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/settings", async (req, res) => {
+  try {
+    const settings = await Settings.findOne({});
+    res.json(settings || {});
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/admin/orders", auth, async (req, res) => {
+  try {
+    const orders = await Order.find({});
+    res.json(orders);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/admin/upload", auth, upload.single("image"), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+  res.json({ url: `/uploads/${req.file.filename}` });
+});
+
+app.post("/api/admin/products", auth, async (req, res) => {
+  try {
+    const newProduct = new Product({
+      id: "p_" + Date.now(),
+      name: req.body.name,
+      price: Number(req.body.price),
+      description: req.body.description,
+      image: req.body.image,
+      stock: req.body.stock === "true" || req.body.stock === true
+    });
+    await newProduct.save();
+    res.json(newProduct);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put("/api/admin/products/:id", auth, async (req, res) => {
+  try {
+    const updated = await Product.findOneAndUpdate(
+      { id: req.params.id },
+      {
+        name: req.body.name,
+        price: Number(req.body.price),
+        description: req.body.description,
+        image: req.body.image,
+        stock: req.body.stock === "true" || req.body.stock === true
+      },
+      { new: true }
+    );
+    if (!updated) return res.status(404).json({ error: "Product not found" });
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete("/api/admin/products/:id", auth, async (req, res) => {
+  try {
+    const deleted = await Product.findOneAndDelete({ id: req.params.id });
+    if (!deleted) return res.status(404).json({ error: "Product not found" });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/orders", async (req, res) => {
+  try {
+    const newOrder = new Order({
+      id: "ord_" + Date.now(),
+      customer: req.body.customer,
+      items: req.body.items,
+      payment: req.body.payment,
+      status: "Pending",
+      date: Date.now()
+    });
+    await newOrder.save();
+    res.json(newOrder);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put("/api/admin/orders/:id/payment", auth, async (req, res) => {
+  try {
+    const updated = await Order.findOneAndUpdate(
+      { id: req.params.id },
+      { payment: req.body.payment },
+      { new: true }
+    );
+    if (!updated) return res.status(404).json({ error: "Order not found" });
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put("/api/admin/settings", auth, async (req, res) => {
+  try {
+    let settings = await Settings.findOne({});
+    if (!settings) {
+      settings = new Settings(req.body);
+    } else {
+      settings.storeName = req.body.storeName || settings.storeName;
+      settings.tagLine = req.body.tagLine || settings.tagLine;
+      settings.whatsapp = req.body.whatsapp || settings.whatsapp;
+      settings.bkash = req.body.bkash || settings.bkash;
+      settings.currency = req.body.currency || settings.currency;
+      settings.deliveryText = req.body.deliveryText || settings.deliveryText;
+    }
+    await settings.save();
+    res.json(settings);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+app.listen(PORT, () => console.log("Shop running on " + PORT));
